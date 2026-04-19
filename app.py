@@ -194,42 +194,44 @@ if submit_button:
                     st.metric(label="Estimated Salary (LPA)", value="₹ 0.00 Lakhs")
                     st.warning("Salary estimate is unavailable for non-placed projections.")
             
+            # ==========================================
+            # RADAR / SPIDER CHART EKSKLUSIF
+            # ==========================================
             st.markdown("---")
             st.subheader("Candidate Profile Breakdown")
             
-            col_radar = st.columns(1)
+            # RADAR CHART: Memetakan Skill & Akademik
+            # Mengubah CGPA (skala 10) menjadi skala 100 agar seimbang di grafik
+            categories = ['Tech Skills', 'Soft Skills', '10th Grade', '12th Grade', 'Degree', 'CGPA']
+            values = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10]
             
-            with col_radar:
-                # 1. RADAR CHART: Memetakan Skill & Akademik
-                # Mengubah CGPA (skala 10) menjadi skala 100 agar seimbang di grafik
-                categories = ['Tech Skills', 'Soft Skills', '10th Grade', '12th Grade', 'Degree', 'CGPA']
-                values = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10]
-                
-                # Menutup garis jaring (titik akhir = titik awal)
-                values.append(values[0])
-                categories.append(categories[0])
-                
-                fig_radar = go.Figure(data=go.Scatterpolar(
-                    r=values,
-                    theta=categories,
-                    fill='toself',
-                    fillcolor='rgba(37, 99, 235, 0.2)', # Biru transparan
-                    line=dict(color='#2563eb', width=2),
-                    name='Candidate Stats'
-                ))
-                
-                fig_radar.update_layout(
-                    polar=dict(
-                        radialaxis=dict(visible=True, range=[0, 100])
-                    ),
-                    showlegend=False,
-                    title=dict(text="Skill & Academic Mapping", font=dict(size=16)),
-                    height=350,
-                    margin=dict(l=40, r=40, t=60, b=40),
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)'
-                )
-                st.plotly_chart(fig_radar, use_container_width=True)
+            # Menutup garis jaring (titik akhir = titik awal)
+            values.append(values[0])
+            categories.append(categories[0])
+            
+            fig_radar = go.Figure(data=go.Scatterpolar(
+                r=values,
+                theta=categories,
+                fill='toself',
+                fillcolor='rgba(37, 99, 235, 0.2)', # Biru transparan
+                line=dict(color='#2563eb', width=2),
+                name='Candidate Stats'
+            ))
+            
+            fig_radar.update_layout(
+                polar=dict(
+                    radialaxis=dict(visible=True, range=[0, 100])
+                ),
+                showlegend=False,
+                title=dict(text="Skill & Academic Mapping", font=dict(size=16)),
+                height=450, # Sedikit lebih tinggi agar terlihat proporsional tanpa kolom
+                margin=dict(l=40, r=40, t=60, b=40),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
+            
+            # Render langsung grafik ke halaman utama
+            st.plotly_chart(fig_radar, use_container_width=True)
             
     except Exception as e:
         st.error(f"Failed to process prediction. Error: {str(e)}")
