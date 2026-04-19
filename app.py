@@ -5,6 +5,9 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from lightgbm import LGBMClassifier
 from sklearn.ensemble import RandomForestRegressor
 import plotly.graph_objects as go 
+import sys
+import __main__
+sys.modules['train'] = __main__
 
 # Customized Transformer (required to load .pkl)
 class FeatureEngineer(BaseEstimator, TransformerMixin):
