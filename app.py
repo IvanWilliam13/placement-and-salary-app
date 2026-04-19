@@ -84,15 +84,25 @@ with st.form("prediction_form"):
 
 # Bounds & Constants
 TRAIN_BOUNDS = {
-    'ssc_percentage': (50.0, 95.0),'hsc_percentage': (50.0, 94.0),'degree_percentage': (55.0, 89.0),
-    'cgpa': (5.5, 9.8), 'entrance_exam_score': (40.0, 99.0), 'technical_skill_score': (40.0, 99.0),'soft_skill_score': (40.0, 99.0), 
-    'internship_count': (0, 4), 'live_projects': (0, 5),'work_experience_months': (0, 24), 'certifications': (0, 5), 
-    'attendance_percentage': (60.0, 99.0),'backlogs': (0, 5)
+    'ssc_percentage': (50.0, 95.0),
+    'hsc_percentage': (50.0, 94.0),
+    'degree_percentage': (55.0, 89.0),
+    'cgpa': (5.5, 9.8), 
+    'entrance_exam_score': (40.0, 99.0), 
+    'technical_skill_score': (40.0, 99.0),
+    'soft_skill_score': (40.0, 99.0), 
+    'internship_count': (0, 4), 
+    'live_projects': (0, 5),
+    'work_experience_months': (0, 24), 
+    'certifications': (0, 5), 
+    'attendance_percentage': (60.0, 99.0),
+    'backlogs': (0, 5)
 }
 
 COLUMNS_ORDER = [
-    'gender', 'ssc_percentage', 'hsc_percentage', 'degree_percentage', 'cgpa','entrance_exam_score',
-    'technical_skill_score', 'soft_skill_score','internship_count', 'live_projects', 'work_experience_months',
+    'gender', 'ssc_percentage', 'hsc_percentage', 'degree_percentage', 'cgpa',
+    'entrance_exam_score', 'technical_skill_score', 'soft_skill_score',
+    'internship_count', 'live_projects', 'work_experience_months',
     'certifications', 'attendance_percentage', 'backlogs', 'extracurricular_activities'
 ]
 
@@ -181,3 +191,5 @@ if submit_button:
                     st.metric(label="Estimated Salary (LPA)", value="₹ 0.00 Lakhs")
                     st.warning("Salary estimate is unavailable for non-placed projections.")
             
+    except Exception as e:
+        st.error(f"Failed to process prediction. Error: {str(e)}")
