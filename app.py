@@ -3,6 +3,12 @@ import pandas as pd
 import joblib
 from sklearn.base import BaseEstimator, TransformerMixin
 import __main__
+import sys
+import types
+
+train_module = types.ModuleType("train")
+train_module.FeatureEngineer = FeatureEngineer
+sys.modules["train"] = train_module
 
 class FeatureEngineer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
