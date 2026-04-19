@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import joblib
 from sklearn.base import BaseEstimator, TransformerMixin
+import __main__
 
 class FeatureEngineer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
