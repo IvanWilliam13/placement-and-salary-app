@@ -56,7 +56,7 @@ with st.form("prediction_form"):
     st.subheader("Demographics")
     gender = st.radio("Gender", ["Male", "Female"], horizontal=True)
     
-    st.subheader("Academics")
+    st.subheader("Academics & Skills")
     extracurricular_activities_bool = st.checkbox("Active in Extracurricular Activities")
     extracurricular_activities = "Yes" if extracurricular_activities_bool else "No"
     
@@ -68,15 +68,10 @@ with st.form("prediction_form"):
     with col2:
         degree_percentage = st.number_input("Degree Percentage", 0.0, 100.0, 70.0)
         cgpa = st.number_input("CGPA", 0.0, 10.0, 7.5)
+        technical_skill_score = st.number_input("Technical Skill Score (0-100)", 0.0, 100.0, 70.0)
     with col3:
         entrance_exam_score = st.number_input("Entrance Exam Score", 0.0, 100.0, 70.0)
         backlogs = st.number_input("Active/Past Backlogs", 0, 10, 0)
-
-    st.subheader("Skills")
-    col2_1, col2_2 = st.columns(2)
-    with col2_1:
-        technical_skill_score = st.number_input("Technical Skill Score (0-100)", 0.0, 100.0, 70.0)
-    with col2_2:
         soft_skill_score = st.number_input("Soft Skill Score (0-100)", 0.0, 100.0, 70.0)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -117,16 +112,14 @@ if submit_button:
             df = pd.DataFrame([features], columns=COLUMNS_ORDER)
             df[df.select_dtypes(['int64', 'int32']).columns] = df.select_dtypes(['int64', 'int32']).astype(float)
 
+            # Classification
             placement_pred = int(clf_pipeline.predict(df)[0])
             placement_prob = float(clf_pipeline.predict_proba(df)[0][1])
             placement_status = "Placed" if placement_pred == 1 else "Not Placed"
 
             salary_pred = 0.0
             if placement_pred == 1:
-                reg_df = df.copy()
-                for col, (min_val, max_val) in TRAIN_BOUNDS.items():
-                    reg_df[col] = reg_df[col].clip(lower=min_val, upper=max_val)
-                    salary_pred = max(0.0, float(reg_pipeline.predict(reg_df)[0]))
+                salary_pred = max(0.0, float(reg_pipeline.predict(df)[0]))
 
             st.markdown("---")
             st.subheader("Analysis Results")
@@ -136,6 +129,7 @@ if submit_button:
                 fig = go.Figure(go.Pie(values=[placement_prob, 1-placement_prob], labels=['Placed', 'Not Placed'], hole=.7, marker_colors=['#2563eb', '#e2e8f0'], textinfo='none', hoverinfo='label+percent'))
                 fig.update_layout(annotations=[dict(text=f'{placement_prob*100:.1f}%', x=0.5, y=0.5, font_size=26, showarrow=False, font_family="Arial Black")], margin=dict(l=0, r=0, t=0, b=0), height=280, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
+                
                 if placement_pred:
                     st.success(f"Status Target: {placement_status}")
                 else:
@@ -144,16 +138,17 @@ if submit_button:
             with col_metric:
                 st.markdown("<br><br>", unsafe_allow_html=True) 
                 st.metric("Estimated Salary (LPA)", f"₹ {salary_pred:.2f} Lakhs")
+                
                 if placement_pred:
-                    st.info("Estimated based on historical placement data with clipping applied.")
+                    st.info("Estimated based on historical placement data.")
                 else:
                     st.warning("Salary estimate is unavailable for non-placed projections.")
             
             st.markdown("---")
             st.subheader("Candidate Profile Breakdown")
-            cats = ['Tech Skills', 'Soft Skills', 'SSC %','HSC %', 'Degree', 'CGPA', 'Attendance %']
-            vals = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10, attendance_percentage]
             
+            cats = ['Tech Skills', 'Soft Skills', 'SSC %','HSC %', 'Degree', 'CGPA', 'Attendance %', 'Tech Skills']
+            vals = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10, attendance_percentage, technical_skill_score]
             fig_radar = go.Figure(go.Scatterpolar(r=vals, theta=cats, fill='toself', fillcolor='rgba(37, 99, 235, 0.2)', line_color='#2563eb', name='Candidate Stats'))
             fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=False, margin=dict(l=40, r=40, t=60, b=40), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_radar, use_container_width=True)
