@@ -136,13 +136,18 @@ if submit_button:
                 fig = go.Figure(go.Pie(values=[placement_prob, 1-placement_prob], labels=['Placed', 'Not Placed'], hole=.7, marker_colors=['#2563eb', '#e2e8f0'], textinfo='none', hoverinfo='label+percent'))
                 fig.update_layout(annotations=[dict(text=f'{placement_prob*100:.1f}%', x=0.5, y=0.5, font_size=26, showarrow=False, font_family="Arial Black")], margin=dict(l=0, r=0, t=0, b=0), height=280, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
-                st.success(f"Status Target: {placement_status}") if placement_pred else st.error(f"Status Target: {placement_status}")
+                if placement_pred:
+                    st.success(f"Status Target: {placement_status}")
+                else:
+                    st.error(f"Status Target: {placement_status}")
 
             with col_metric:
                 st.markdown("<br><br>", unsafe_allow_html=True) 
                 st.metric("Estimated Salary (LPA)", f"₹ {salary_pred:.2f} Lakhs")
-                # Menggunakan inline-if untuk meringkas info/warning
-                st.info("Estimated based on historical placement data with clipping applied.") if placement_pred else st.warning("Salary estimate is unavailable for non-placed projections.")
+                if placement_pred:
+                    st.info("Estimated based on historical placement data with clipping applied.")
+                else:
+                    st.warning("Salary estimate is unavailable for non-placed projections.")
             
             st.markdown("---")
             st.subheader("Candidate Profile Breakdown")
