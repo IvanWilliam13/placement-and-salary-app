@@ -197,7 +197,7 @@ if submit_button:
             st.markdown("---")
             st.subheader("Candidate Profile Breakdown")
             
-            col_radar, col_bar = st.columns(1)
+            col_radar = st.columns(1)
             
             with col_radar:
                 # 1. RADAR CHART: Memetakan Skill & Akademik
