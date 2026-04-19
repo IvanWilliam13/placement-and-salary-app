@@ -25,7 +25,6 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
         X_new['skill_score_combined'] = (X_new['technical_skill_score'] + X_new['soft_skill_score']) / 2
         X_new['academic_score_avg'] = (X_new['ssc_percentage'] + X_new['hsc_percentage'] + X_new['degree_percentage'] + X_new['cgpa'] * 10) / 4
         X_new['engagement_score'] = (X_new['attendance_percentage'] + X_new['extracurricular_activities'])
-        
         X_new.fillna(0, inplace=True)
         return X_new
 
@@ -40,8 +39,6 @@ clf_pipeline, reg_pipeline = load_models()
 
 # Page Configuration
 st.set_page_config(page_title="Placement & Salary Predictor", page_icon="🎓", layout="wide", initial_sidebar_state="expanded")
-
-# Title and subtitle
 st.title("🎓 Student Placement & Salary Predictor")
 st.markdown("Predictive analysis for job placement probability and salary estimation.")
 st.markdown("---")
@@ -87,40 +84,25 @@ with st.form("prediction_form"):
 
 # Bounds & Constants
 TRAIN_BOUNDS = {
-    'ssc_percentage': (50.0, 95.0),
-    'hsc_percentage': (50.0, 94.0),
-    'degree_percentage': (55.0, 89.0),
-    'cgpa': (5.5, 9.8), 
-    'entrance_exam_score': (40.0, 99.0), 
-    'technical_skill_score': (40.0, 99.0),
-    'soft_skill_score': (40.0, 99.0), 
-    'internship_count': (0, 4), 
-    'live_projects': (0, 5),
-    'work_experience_months': (0, 24), 
-    'certifications': (0, 5), 
-    'attendance_percentage': (60.0, 99.0),
-    'backlogs': (0, 5)
+    'ssc_percentage': (50.0, 95.0),'hsc_percentage': (50.0, 94.0),'degree_percentage': (55.0, 89.0),'cgpa': (5.5, 9.8), 
+    'entrance_exam_score': (40.0, 99.0), 'technical_skill_score': (40.0, 99.0),'soft_skill_score': (40.0, 99.0), 'internship_count': (0, 4), 
+    'live_projects': (0, 5),'work_experience_months': (0, 24), 'certifications': (0, 5), 'attendance_percentage': (60.0, 99.0),'backlogs': (0, 5)
 }
 
 COLUMNS_ORDER = [
-    'gender', 'ssc_percentage', 'hsc_percentage', 'degree_percentage', 'cgpa',
-    'entrance_exam_score', 'technical_skill_score', 'soft_skill_score',
-    'internship_count', 'live_projects', 'work_experience_months',
-    'certifications', 'attendance_percentage', 'backlogs', 'extracurricular_activities'
+    'gender', 'ssc_percentage', 'hsc_percentage', 'degree_percentage', 'cgpa','entrance_exam_score', 'technical_skill_score', 'soft_skill_score',
+    'internship_count', 'live_projects', 'work_experience_months','certifications', 'attendance_percentage', 'backlogs', 'extracurricular_activities'
 ]
 
 # Inference Logic
 if submit_button:
     features = {
-        'gender': gender, 'ssc_percentage': ssc_percentage, 'hsc_percentage': hsc_percentage,
-        'degree_percentage': degree_percentage, 'cgpa': cgpa, 'entrance_exam_score': entrance_exam_score,
-        'backlogs': backlogs, 'internship_count': internship_count, 'live_projects': live_projects,
-        'work_experience_months': work_experience_months, 'technical_skill_score': technical_skill_score,
-        'soft_skill_score': soft_skill_score, 'certifications': certifications,
-        'attendance_percentage': attendance_percentage, 'extracurricular_activities': extracurricular_activities
+        'gender': gender, 'ssc_percentage': ssc_percentage, 'hsc_percentage': hsc_percentage,'degree_percentage': degree_percentage, 'cgpa': cgpa, 
+        'entrance_exam_score': entrance_exam_score,'backlogs': backlogs, 'internship_count': internship_count, 'live_projects': live_projects,
+        'work_experience_months': work_experience_months, 'technical_skill_score': technical_skill_score,'soft_skill_score': soft_skill_score, 
+        'certifications': certifications,'attendance_percentage': attendance_percentage, 'extracurricular_activities': extracurricular_activities
     }
-
-    # Warning Logic for Out Of Bounds
+    
     out_of_bounds_msgs = []
     for col, (min_val, max_val) in TRAIN_BOUNDS.items():
         val = features[col]
@@ -132,104 +114,43 @@ if submit_button:
 
     try:
         with st.spinner('Processing candidate data...'):
-            # Prepare DataFrame ensuring strict column order and data types
-            df = pd.DataFrame([features])[COLUMNS_ORDER]
-            numeric_cols = df.select_dtypes(include=['int64', 'int32']).columns
-            df[numeric_cols] = df[numeric_cols].astype(float)
+            df = pd.DataFrame([features], columns=COLUMNS_ORDER)
+            df[df.select_dtypes(['int64', 'int32']).columns] = df.select_dtypes(['int64', 'int32']).astype(float)
 
-            # Classification Inference
             placement_pred = int(clf_pipeline.predict(df)[0])
             placement_prob = float(clf_pipeline.predict_proba(df)[0][1])
-
-            # Regression Inference (with Clipping)
-            salary_pred = 0.0
-            if placement_pred == 1:
-                reg_df = df.copy()
-                for col, (min_val, max_val) in TRAIN_BOUNDS.items():
-                    reg_df[col] = reg_df[col].clip(lower=min_val, upper=max_val)
-                
-                salary_pred = float(reg_pipeline.predict(reg_df)[0])
-                if salary_pred < 0:
-                    salary_pred = 0.0
-            
             placement_status = "Placed" if placement_pred == 1 else "Not Placed"
 
-            # UI Rendering Results
+            salary_pred = 0.0
+            if placement_pred == 1:
+                reg_df = df.clip(lower={k: v[0] for k, v in TRAIN_BOUNDS.items()}, 
+                                 upper={k: v[1] for k, v in TRAIN_BOUNDS.items()})
+                salary_pred = max(0.0, float(reg_pipeline.predict(reg_df)[0]))
+
             st.markdown("---")
             st.subheader("Analysis Results")
-            
-            col_chart, col_metric = st.columns([1, 1])
+            col_chart, col_metric = st.columns(2)
             
             with col_chart:
-                fig = go.Figure(go.Pie(
-                    values=[placement_prob, 1-placement_prob],
-                    labels=['Placed', 'Not Placed'],
-                    hole=.7,
-                    marker_colors=['#2563eb', '#e2e8f0'],
-                    textinfo='none',
-                    showlegend=False,
-                    hoverinfo='label+percent'
-                ))
-                fig.update_layout(
-                    annotations=[dict(text=f'{placement_prob*100:.1f}%', x=0.5, y=0.5, font_size=26, showarrow=False, font_family="Arial Black")],
-                    margin=dict(l=0, r=0, t=0, b=0),
-                    height=280,
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                )
+                fig = go.Figure(go.Pie(values=[placement_prob, 1-placement_prob], labels=['Placed', 'Not Placed'], hole=.7, marker_colors=['#2563eb', '#e2e8f0'], textinfo='none', hoverinfo='label+percent'))
+                fig.update_layout(annotations=[dict(text=f'{placement_prob*100:.1f}%', x=0.5, y=0.5, font_size=26, showarrow=False, font_family="Arial Black")], margin=dict(l=0, r=0, t=0, b=0), height=280, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
-                
-                # Status Alert
-                if placement_status == "Placed":
-                    st.success(f"Status Target: {placement_status}")
-                else:
-                    st.error(f"Status Target: {placement_status}")
+                st.success(f"Status Target: {placement_status}") if placement_pred else st.error(f"Status Target: {placement_status}")
 
             with col_metric:
                 st.markdown("<br><br>", unsafe_allow_html=True) 
-                if placement_status == "Placed":
-                    st.metric(label="Estimated Salary (LPA)", value=f"₹ {salary_pred:.2f} Lakhs")
-                    st.info("Estimated based on historical placement data with clipping applied.")
-                else:
-                    st.metric(label="Estimated Salary (LPA)", value="₹ 0.00 Lakhs")
-                    st.warning("Salary estimate is unavailable for non-placed projections.")
+                st.metric("Estimated Salary (LPA)", f"₹ {salary_pred:.2f} Lakhs")
+                # Menggunakan inline-if untuk meringkas info/warning
+                st.info("Estimated based on historical placement data with clipping applied.") if placement_pred else st.warning("Salary estimate is unavailable for non-placed projections.")
             
             st.markdown("---")
             st.subheader("Candidate Profile Breakdown")
+            cats = ['Tech Skills', 'Soft Skills', 'SSC %' 'HSC %', 'Degree', 'CGPA', 'Attendance %']
+            vals = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10, attendance_percentage]
             
-            col_radar, col_bar = st.columns(1)
-            
-            with col_radar:
-                # 1. RADAR CHART: Memetakan Skill & Akademik
-                # Mengubah CGPA (skala 10) menjadi skala 100 agar seimbang di grafik
-                categories = ['Tech Skills', 'Soft Skills', '10th Grade', '12th Grade', 'Degree', 'CGPA']
-                values = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10]
-                
-                # Menutup garis jaring (titik akhir = titik awal)
-                values.append(values[0])
-                categories.append(categories[0])
-                
-                fig_radar = go.Figure(data=go.Scatterpolar(
-                    r=values,
-                    theta=categories,
-                    fill='toself',
-                    fillcolor='rgba(37, 99, 235, 0.2)', # Biru transparan
-                    line=dict(color='#2563eb', width=2),
-                    name='Candidate Stats'
-                ))
-                
-                fig_radar.update_layout(
-                    polar=dict(
-                        radialaxis=dict(visible=True, range=[0, 100])
-                    ),
-                    showlegend=False,
-                    title=dict(text="Skill & Academic Mapping", font=dict(size=16)),
-                    height=350,
-                    margin=dict(l=40, r=40, t=60, b=40),
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)'
-                )
-                st.plotly_chart(fig_radar, use_container_width=True)
+            fig_radar = go.Figure(go.Scatterpolar(r=vals, theta=cats, fill='toself', fillcolor='rgba(37, 99, 235, 0.2)', line_color='#2563eb', name='Candidate Stats'))
+            fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=False, title=dict(text="Skill & Academic Mapping", font_size=16), height=350, margin=dict(l=40, r=40, t=60, b=40), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_radar, use_container_width=True)
             
     except Exception as e:
         st.error(f"Failed to process prediction. Error: {str(e)}")
