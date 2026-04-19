@@ -4,6 +4,8 @@ import joblib
 from sklearn.base import BaseEstimator, TransformerMixin
 from lightgbm import LGBMClassifier
 from sklearn.ensemble import RandomForestRegressor
+import sys
+import types
 
 class FeatureEngineer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
@@ -26,6 +28,10 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
         
         X_new.fillna(0, inplace=True)
         return X_new
+
+train_module = types.ModuleType("train")
+train_module.FeatureEngineer = FeatureEngineer
+sys.modules["train"] = train_module
 
 # Load Model.pkl
 @st.cache_resource
