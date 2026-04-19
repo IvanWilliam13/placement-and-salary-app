@@ -123,9 +123,10 @@ if submit_button:
 
             salary_pred = 0.0
             if placement_pred == 1:
-                reg_df = df.clip(lower={k: v[0] for k, v in TRAIN_BOUNDS.items()}, 
-                                 upper={k: v[1] for k, v in TRAIN_BOUNDS.items()})
-                salary_pred = max(0.0, float(reg_pipeline.predict(reg_df)[0]))
+                reg_df = df.copy()
+                for col, (min_val, max_val) in TRAIN_BOUNDS.items():
+                    reg_df[col] = reg_df[col].clip(lower=min_val, upper=max_val)
+                    salary_pred = max(0.0, float(reg_pipeline.predict(reg_df)[0]))
 
             st.markdown("---")
             st.subheader("Analysis Results")
@@ -145,7 +146,7 @@ if submit_button:
             
             st.markdown("---")
             st.subheader("Candidate Profile Breakdown")
-            cats = ['Tech Skills', 'Soft Skills', 'SSC %' 'HSC %', 'Degree', 'CGPA', 'Attendance %']
+            cats = ['Tech Skills', 'Soft Skills', 'SSC %','HSC %', 'Degree', 'CGPA', 'Attendance %']
             vals = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10, attendance_percentage]
             
             fig_radar = go.Figure(go.Scatterpolar(r=vals, theta=cats, fill='toself', fillcolor='rgba(37, 99, 235, 0.2)', line_color='#2563eb', name='Candidate Stats'))
