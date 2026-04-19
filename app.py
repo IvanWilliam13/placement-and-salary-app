@@ -6,10 +6,6 @@ import __main__
 import sys
 import types
 
-train_module = types.ModuleType("train")
-train_module.FeatureEngineer = FeatureEngineer
-sys.modules["train"] = train_module
-
 class FeatureEngineer(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         return self 
@@ -31,6 +27,10 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
         
         X_new.fillna(0, inplace=True)
         return X_new
+
+train_module = types.ModuleType("train")
+train_module.FeatureEngineer = FeatureEngineer
+sys.modules["train"] = train_module
 
 # Load Model.pkl
 @st.cache_resource
