@@ -110,6 +110,7 @@ COLUMNS_ORDER = [
 ]
 
 # Inference Logic
+# Inference Logic
 if submit_button:
     features = {
         'gender': gender, 'ssc_percentage': ssc_percentage, 'hsc_percentage': hsc_percentage,
@@ -120,117 +121,57 @@ if submit_button:
         'attendance_percentage': attendance_percentage, 'extracurricular_activities': extracurricular_activities
     }
 
-    # Warning Logic for Out Of Bounds
-    out_of_bounds_msgs = []
-    for col, (min_val, max_val) in TRAIN_BOUNDS.items():
-        val = features[col]
-        if val < min_val or val > max_val:
-            out_of_bounds_msgs.append(f"*{col}*: {val} (Normal Range: {min_val} - {max_val})")
-            
-    if out_of_bounds_msgs:
-        st.warning("*Extrapolation Warning:* Certain inputs exceed the historical training data range.\n\n" + "\n".join([f"- {msg}" for msg in out_of_bounds_msgs]))
+    # 1. Shorthand Warning Logic (List Comprehension)
+    warnings = [f"- *{k}*: {features[k]} (Normal Range: {v[0]} - {v[1]})" for k, v in TRAIN_BOUNDS.items() if not (v[0] <= features[k] <= v[1])]
+    if warnings:
+        st.warning("*Extrapolation Warning:* Certain inputs exceed the historical training data range.\n\n" + "\n".join(warnings))
 
     try:
         with st.spinner('Processing candidate data...'):
-            # Prepare DataFrame ensuring strict column order and data types
-            df = pd.DataFrame([features])[COLUMNS_ORDER]
-            numeric_cols = df.select_dtypes(include=['int64', 'int32']).columns
-            df[numeric_cols] = df[numeric_cols].astype(float)
+            # 2. DataFrame Prep (1 baris untuk konversi tipe data)
+            df = pd.DataFrame([features], columns=COLUMNS_ORDER)
+            df[df.select_dtypes(['int64', 'int32']).columns] = df.select_dtypes(['int64', 'int32']).astype(float)
 
-            # Classification Inference
-            placement_pred = int(clf_pipeline.predict(df)[0])
-            placement_prob = float(clf_pipeline.predict_proba(df)[0][1])
+            # 3. Predictions (Variabel di-assign sejajar)
+            placement_pred, placement_prob = int(clf_pipeline.predict(df)[0]), float(clf_pipeline.predict_proba(df)[0][1])
+            placement_status = "Placed" if placement_pred == 1 else "Not Placed"
 
-            # Regression Inference (with Clipping)
+            # 4. Regression Inference (Vektorisasi df.clip dan max() untuk meniadakan if-else salary < 0)
             salary_pred = 0.0
             if placement_pred == 1:
-                reg_df = df.copy()
-                for col, (min_val, max_val) in TRAIN_BOUNDS.items():
-                    reg_df[col] = reg_df[col].clip(lower=min_val, upper=max_val)
-                
-                salary_pred = float(reg_pipeline.predict(reg_df)[0])
-                if salary_pred < 0:
-                    salary_pred = 0.0
-            
-            placement_status = "Placed" if placement_pred == 1 else "Not Placed"
+                salary_pred = max(0.0, float(reg_pipeline.predict(df.clip(
+                    lower={k: v[0] for k, v in TRAIN_BOUNDS.items()}, 
+                    upper={k: v[1] for k, v in TRAIN_BOUNDS.items()}
+                ))[0]))
 
             # UI Rendering Results
             st.markdown("---")
             st.subheader("Analysis Results")
-            
-            col_chart, col_metric = st.columns([1, 1])
+            col_chart, col_metric = st.columns(2) # st.columns(2) sama persis dengan [1, 1]
             
             with col_chart:
-                fig = go.Figure(go.Pie(
-                    values=[placement_prob, 1-placement_prob],
-                    labels=['Placed', 'Not Placed'],
-                    hole=.7,
-                    marker_colors=['#2563eb', '#e2e8f0'],
-                    textinfo='none',
-                    showlegend=False,
-                    hoverinfo='label+percent'
-                ))
-                fig.update_layout(
-                    annotations=[dict(text=f'{placement_prob*100:.1f}%', x=0.5, y=0.5, font_size=26, showarrow=False, font_family="Arial Black")],
-                    margin=dict(l=0, r=0, t=0, b=0),
-                    height=280,
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                )
+                # 5. Konfigurasi Plotly disingkat ke dalam argumen bawaan
+                fig = go.Figure(go.Pie(values=[placement_prob, 1-placement_prob], labels=['Placed', 'Not Placed'], hole=.7, marker_colors=['#2563eb', '#e2e8f0'], textinfo='none', showlegend=False, hoverinfo='label+percent'))
+                fig.update_layout(annotations=[dict(text=f'{placement_prob*100:.1f}%', x=0.5, y=0.5, font_size=26, showarrow=False, font_family="Arial Black")], margin=dict(l=0, r=0, t=0, b=0), height=280, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig, use_container_width=True)
                 
-                # Status Alert
-                if placement_status == "Placed":
-                    st.success(f"Status Target: {placement_status}")
-                else:
-                    st.error(f"Status Target: {placement_status}")
+                st.success(f"Status Target: {placement_status}") if placement_pred else st.error(f"Status Target: {placement_status}")
 
             with col_metric:
                 st.markdown("<br><br>", unsafe_allow_html=True) 
-                if placement_status == "Placed":
-                    st.metric(label="Estimated Salary (LPA)", value=f"₹ {salary_pred:.2f} Lakhs")
-                    st.info("Estimated based on historical placement data with clipping applied.")
-                else:
-                    st.metric(label="Estimated Salary (LPA)", value="₹ 0.00 Lakhs")
-                    st.warning("Salary estimate is unavailable for non-placed projections.")
+                st.metric("Estimated Salary (LPA)", f"₹ {salary_pred:.2f} Lakhs")
+                st.info("Estimated based on historical placement data with clipping applied.") if placement_pred else st.warning("Salary estimate is unavailable for non-placed projections.")
             
-            # ==========================================
-            # RADAR / SPIDER CHART EKSKLUSIF
-            # ==========================================
+            # RADAR CHART
             st.markdown("---")
             st.subheader("Candidate Profile Breakdown")
             
-            # RADAR CHART: Memetakan Skill & Akademik
-            # Mengubah CGPA (skala 10) menjadi skala 100 agar seimbang di grafik
-            categories = ['Tech Skills', 'Soft Skills', '10th Grade', '12th Grade', 'Degree', 'CGPA']
-            values = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10]
+            # 6. List Radar Chart langsung digabungkan awal dan akhirnya (meniadakan .append)
+            cats = ['Tech Skills', 'Soft Skills', '10th Grade', '12th Grade', 'Degree', 'CGPA', 'Tech Skills']
+            vals = [technical_skill_score, soft_skill_score, ssc_percentage, hsc_percentage, degree_percentage, cgpa * 10, technical_skill_score]
             
-            # Menutup garis jaring (titik akhir = titik awal)
-            values.append(values[0])
-            categories.append(categories[0])
-            
-            fig_radar = go.Figure(data=go.Scatterpolar(
-                r=values,
-                theta=categories,
-                fill='toself',
-                fillcolor='rgba(37, 99, 235, 0.2)', # Biru transparan
-                line=dict(color='#2563eb', width=2),
-                name='Candidate Stats'
-            ))
-            
-            fig_radar.update_layout(
-                polar=dict(
-                    radialaxis=dict(visible=True, range=[0, 100])
-                ),
-                showlegend=False,
-                title=dict(text="Skill & Academic Mapping", font=dict(size=16)),
-                height=450, # Sedikit lebih tinggi agar terlihat proporsional tanpa kolom
-                margin=dict(l=40, r=40, t=60, b=40),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
-            
-            # Render langsung grafik ke halaman utama
+            fig_radar = go.Figure(go.Scatterpolar(r=vals, theta=cats, fill='toself', fillcolor='rgba(37, 99, 235, 0.2)', line_color='#2563eb', name='Candidate Stats'))
+            fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 100])), showlegend=False, title=dict(text="Skill & Academic Mapping", font_size=16), height=450, margin=dict(l=40, r=40, t=60, b=40), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_radar, use_container_width=True)
             
     except Exception as e:
