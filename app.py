@@ -75,7 +75,7 @@ with st.form("prediction_form"):
         entrance_exam_score = st.number_input("Entrance Exam Score", 0.0, 100.0, 70.0)
         backlogs = st.number_input("Active/Past Backlogs", 0, 10, 0)
 
-    st.subheader("Technical Proficiency")
+    st.subheader("Skills")
     col2_1, col2_2 = st.columns(2)
     with col2_1:
         technical_skill_score = st.number_input("Technical Skill Score (0-100)", 0.0, 100.0, 70.0)
